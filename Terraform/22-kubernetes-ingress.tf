@@ -46,4 +46,6 @@ resource "kubernetes_ingress_v1" "app_ingress" {
       }
     }
   }
+
+  depends_on = [ helm_release.aws_lbc]
 }
