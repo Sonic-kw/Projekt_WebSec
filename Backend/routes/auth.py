@@ -8,22 +8,25 @@ from datetime import timedelta
 from schemas.models import User
 from schemas.schemas import UserCreate, UserResponse, Token
 from handlers.auth import get_password_hash, verify_password, create_access_token, get_current_active_user
+from handlers.database import get_db, DynamoDBClient
 from config import ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter()
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/api/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
     """Register a new user"""
+    db = get_db()
+    
     # Check if user exists
-    existing_user = await User.find_one(User.username == user.username)
+    existing_user = await db.get_user_by_username(user.username)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered"
         )
     
-    existing_email = await User.find_one(User.email == user.email)
+    existing_email = await db.get_user_by_email(user.email)
     if existing_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -37,7 +40,7 @@ async def register(user: UserCreate):
         email=user.email,
         hashed_password=hashed_password
     )
-    await new_user.insert()
+    await db.create_user(new_user)
     
     return UserResponse(
         username=new_user.username,
@@ -46,10 +49,12 @@ async def register(user: UserCreate):
         is_active=new_user.is_active
     )
 
-@router.post("/token", response_model=Token)
+@router.post("/api/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """Login and get JWT access token"""
-    user = await User.find_one(User.username == form_data.username)
+    db = get_db()
+    user = await db.get_user_by_username(form_data.username)
+    
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,7 +68,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.get("/users/me", response_model=UserResponse)
+@router.get("/api/users/me", response_model=UserResponse)
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
     """Get current user information"""
     return UserResponse(

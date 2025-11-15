@@ -2,8 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Copy application code
+COPY --exclude=Dockerfile --exclude=.git --exclude=__pycache__ . /app 
+
 # Install dependencies
-COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose port

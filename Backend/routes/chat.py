@@ -9,18 +9,20 @@ from schemas.models import User, ChatMessage
 from schemas.schemas import ChatMessageResponse
 from handlers.auth import get_current_active_user
 from handlers.websocket import manager
+from handlers.database import get_db, DynamoDBClient
 from config import SECRET_KEY, ALGORITHM
 
 router = APIRouter()
 
-@router.get("/chat/history", response_model=List[ChatMessageResponse])
+@router.get("/api/chat/history", response_model=List[ChatMessageResponse])
 async def get_chat_history(
     limit: int = 50,
     current_user: User = Depends(get_current_active_user)
 ):
     """Get chat message history"""
-    messages = await ChatMessage.find_all().sort(-ChatMessage.timestamp).limit(limit).to_list()
-    messages.reverse()  # Return in chronological order
+    db = get_db()
+    messages = await db.get_recent_messages(limit)
+    
     return [
         ChatMessageResponse(
             username=msg.username,
@@ -30,9 +32,10 @@ async def get_chat_history(
         for msg in messages
     ]
 
-@router.websocket("/ws/chat")
+@router.websocket("/api/ws/chat")
 async def websocket_chat(websocket: WebSocket):
     """WebSocket endpoint for real-time chat"""
+    db = get_db()
     await manager.connect(websocket)
     
     # Authenticate user
@@ -45,7 +48,7 @@ async def websocket_chat(websocket: WebSocket):
                 await websocket.close(code=1008)
                 return
             
-            user = await User.find_one(User.username == username)
+            user = await db.get_user_by_username(username)
             if user is None or not user.is_active:
                 await websocket.close(code=1008)
                 return
@@ -60,8 +63,7 @@ async def websocket_chat(websocket: WebSocket):
         })
         
         # Send recent chat history (last 50 messages)
-        recent_messages = await ChatMessage.find_all().sort(-ChatMessage.timestamp).limit(50).to_list()
-        recent_messages.reverse()  # Chronological order
+        recent_messages = await db.get_recent_messages(50)
         
         if recent_messages:
             await websocket.send_json({
@@ -92,8 +94,7 @@ async def websocket_chat(websocket: WebSocket):
                         limit = int(command_parts[1])
                         limit = min(limit, 200)  # Max 200 messages
                     
-                    history_messages = await ChatMessage.find_all().sort(-ChatMessage.timestamp).limit(limit).to_list()
-                    history_messages.reverse()
+                    history_messages = await db.get_recent_messages(limit)
                     
                     await websocket.send_json({
                         "type": "history",
@@ -117,7 +118,7 @@ async def websocket_chat(websocket: WebSocket):
             
             # Regular message - save and broadcast
             chat_message = ChatMessage(username=username, message=data)
-            await chat_message.insert()
+            await db.create_message(chat_message)
             
             # Broadcast to all connected clients
             message_data = {

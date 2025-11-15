@@ -12,10 +12,10 @@ from routes import auth, chat
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    client = await init_db()
+    await init_db()
     yield
     # Shutdown
-    client.close()
+    pass
 
 # Create FastAPI app
 app = FastAPI(title="Forum API", lifespan=lifespan)

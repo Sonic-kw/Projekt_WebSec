@@ -1,6 +1,5 @@
 """
 Authentication utilities: password hashing, JWT token creation, user verification
-Using native bcrypt instead of passlib
 """
 import bcrypt
 from jose import JWTError, jwt
@@ -12,8 +11,9 @@ from fastapi.security import OAuth2PasswordBearer
 from config import SECRET_KEY, ALGORITHM
 from schemas.models import User
 from schemas.schemas import TokenData
+from handlers.database import get_db, DynamoDBClient
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a hashed password"""
@@ -52,7 +52,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     except JWTError:
         raise credentials_exception
     
-    user = await User.find_one(User.username == token_data.username)
+    db = get_db()
+    user = await db.get_user_by_username(token_data.username)
     if user is None:
         raise credentials_exception
     return user

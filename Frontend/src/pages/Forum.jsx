@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import '../App.css';
 
 // WebSocket URL - replace with your FastAPI WebSocket endpoint
-const WS_URL = 'ws://localhost:8000/ws/chat'; 
+const WS_URL = 'ws://rybmw.space/api/ws/chat'; 
 
 // The single, fixed ID for the main chat thread
 const MAIN_THREAD_ID = 1;
@@ -54,7 +54,7 @@ function Forum() {
 
     const fetchUser = async () => {
       try {
-        const response = await fetch('http://localhost:8000/users/me', {
+        const response = await fetch('https://rybmw.space/api/users/me', {
           method: 'GET',
           headers: {
             'accept': 'application/json',
