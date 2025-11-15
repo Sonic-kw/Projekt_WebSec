@@ -6,6 +6,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    allowedHosts: ['rybmw.space', 'k8s-default-appingre-6d548e4681-582162090.eu-north-1.elb.amazonaws.com'] // <-- ADD THIS LINE
+    allowedHosts: ['rybmw.space', 'k8s-default-appingre-6d548e4681-582162090.eu-north-1.elb.amazonaws.com', 'A38DE3240DFC949A0901DEF83763D152.gr7.eu-north-1.eks.amazonaws.com'] 
   }
 })
